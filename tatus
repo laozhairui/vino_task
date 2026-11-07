@@ -1,0 +1,23 @@
+app/main.cpp:9: trailing whitespace.
+[32m+[m[32m{[m[41m   [m
+app/main.cpp:18: trailing whitespace.
+[32m+[m[41m    [m
+app/main.cpp:56: trailing whitespace.
+[32m+[m[41m        [m
+src/YoloVino/CMakeLists.txt:17: new blank line at EOF.
+src/YoloVino/include/yolo_vino.hpp:54: trailing whitespace.
+[32m+[m[32menum LoggerInfoLevel[m[41m [m
+src/YoloVino/include/yolo_vino.hpp:76: trailing whitespace.
+[32m+[m[41m    [m
+src/YoloVino/include/yolo_vino.hpp:129: trailing whitespace.
+[32m+[m[32m{[m[41m   [m
+src/YoloVino/include/yolo_vino.hpp:138: trailing whitespace.
+[32m+[m[32m{[m[41m   [m
+src/YoloVino/include/yolo_vino.hpp:140: trailing whitespace.
+[32m+[m[32m    {[m[41m   [m
+src/YoloVino/include/yolo_vino.hpp:144: trailing whitespace.
+[32m+[m[41m    [m
+src/YoloVino/include/yolo_vino.hpp:147: trailing whitespace.
+[32m+[m[32m    {[m[41m   [m
+src/YoloVino/src/yolo_vino.cpp:527: trailing whitespace.
+[32m+[m[32m            {[m[41m   [m
