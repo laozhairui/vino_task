@@ -6,14 +6,21 @@ project(Task8 LANGUAGES CXX)
 find_package(OpenCV REQUIRED)
 
 
+
 add_subdirectory(src/YoloVino)
 add_subdirectory(src/Camera)
+add_subdirectory(src/PnP)
 
 add_executable(${PROJECT_NAME} app/main.cpp)
 target_link_libraries(${PROJECT_NAME}
  PRIVATE
   YoloVino_LIB
   Camera
+  pnp_solver
   )
-target_include_directories(${PROJECT_NAME} PRIVATE ${OpenCV_INCLUDE_DIR})
+target_include_directories(${PROJECT_NAME}
+ PRIVATE
+  ${OpenCV_INCLUDE_DIR}
+  pnp_solver
+  )
 target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS})

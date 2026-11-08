@@ -1,6 +1,7 @@
 
 #include "Camera.h"
 #include "yolo_vino.hpp"
+#include "PnP.h"
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
@@ -97,6 +98,23 @@ int main()
 
     cv::Mat frame;
 
+    PnP::PnPSolver pnp_solver;
+
+    if (!pnp_solver.load_camera_parameters(
+        "../config/camera_calibration.yml"
+    ))
+    {
+        std::cerr << "[PnP ERROR] Failied to load camera calivreation" << std::endl;
+
+        camera.stop_grabbing();
+        camera.close();
+        camera.finalize();
+
+        return -1;
+    }
+
+    pnp_solver.print_camera_parameters();
+
     while (true)
     {
         // ----------------------------------------------------
@@ -174,6 +192,23 @@ int main()
 
                 if (det.keypoints.size() == 4)
                 {
+
+                    std::vector<cv::Point2f> image_points = {
+                        cv::Point2f(det.keypoints[0].x, det.keypoints[0].y),
+                        cv::Point2f(det.keypoints[1].x, det.keypoints[1].y),
+                        cv::Point2f(det.keypoints[2].x, det.keypoints[2].y),
+                        cv::Point2f(det.keypoints[3].x, det.keypoints[3].y)
+                        
+                        
+                    };
+
+                    PnP::PnPResult pnp_result;
+
+                    if (pnp_solver.solve(image_points, pnp_result))
+                    {
+                        PnP::PnPSolver::print_result(pnp_result);
+                    }
+
                     cv::Point p0(
                         static_cast<int>(det.keypoints[0].x),
                         static_cast<int>(det.keypoints[0].y)
