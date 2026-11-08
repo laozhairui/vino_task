@@ -137,46 +137,6 @@ int main()
 
         for (const auto& det : results)
         {
-            // 绘制装甲板检测框。
-            if (det.rect.width > 0 && det.rect.height > 0)
-            {
-                cv::rectangle(
-                    frame,
-                    det.rect,
-                    cv::Scalar(0, 255, 0),
-                    2
-                );
-            }
-
-            // 绘制类别和置信度。
-            std::string label =
-                "ID:" + std::to_string(det.class_id) +
-                " conf:" + cv::format("%.2f", det.confidence);
-
-            int base_line = 0;
-
-            cv::Size label_size = cv::getTextSize(
-                label,
-                cv::FONT_HERSHEY_SIMPLEX,
-                0.5,
-                1,
-                &base_line
-            );
-
-            int label_y = std::max(
-                det.rect.y,
-                label_size.height + base_line
-            );
-
-            cv::putText(
-                frame,
-                label,
-                cv::Point(det.rect.x, label_y),
-                cv::FONT_HERSHEY_SIMPLEX,
-                0.5,
-                cv::Scalar(0, 255, 0),
-                1
-            );
 
             // 绘制输出的关键点。
             for (std::size_t i = 0; i < det.keypoints.size(); ++i)
