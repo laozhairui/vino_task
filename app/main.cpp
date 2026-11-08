@@ -207,6 +207,41 @@ int main()
                     if (pnp_solver.solve(image_points, pnp_result))
                     {
                         PnP::PnPSolver::print_result(pnp_result);
+
+                        const std::vector<cv::Point3f> armor_points = {
+                            {-65.0F, -65.0F, 0.0F},
+                            {-65.0F,  65.0F, 0.0F},
+                            { 65.0F,  65.0F, 0.0F},
+                            { 65.0F, -65.0F, 0.0F}
+                        };
+
+                        std::vector<cv::Point2f>projected_armor_points;
+
+                        if (pnp_solver.project_points(
+                            pnp_result,
+                            armor_points,
+                            projected_armor_points
+                        ))
+                        {
+                            std::vector<cv::Point> armor_corners;
+                            
+                            for (const auto& point : projected_armor_points)
+                            {
+                                armor_corners.emplace_back(
+                                    cvRound(point.x),
+                                    cvRound(point.y)
+                                );
+                            }
+
+                            cv::polylines(
+                                frame,
+                                armor_corners,
+                                true,
+                                cv::Scalar(255, 255, 0),
+                                2
+                            );
+                        }
+
                     }
 
                     cv::Point p0(

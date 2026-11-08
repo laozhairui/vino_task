@@ -83,6 +83,12 @@ public:
         double light_bar_length = 60.0
     ) const;
 
+    bool project_points(
+        const PnPResult& result,
+        const std::vector<cv::Point3f>& object_points,
+        std::vector<cv::Point2f>& image_points
+    ) const;
+
     // 检查相机参数是否已经成功加载。
     bool is_ready() const;
 

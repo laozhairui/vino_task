@@ -530,4 +530,27 @@ void PnPSolver::print_result(const PnPResult& result)
               << std::endl;
 }
 
+bool PnPSolver::project_points(
+    const PnPResult& result,
+    const std::vector<cv::Point3f>& object_points,
+    std::vector<cv::Point2f>& image_points
+) const
+{
+    if (!is_ready() || object_points.empty())
+    {
+        return false;
+    }
+
+    cv::projectPoints(
+        object_points,
+        result.rotation_vector,
+        result.translation_vector,
+        m_camera_matrix,
+        m_dist_coeffs,
+        image_points
+    );
+
+    return image_points.size() == object_points.size();
+}
+
 }  // namespace PnP
