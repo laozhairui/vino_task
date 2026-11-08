@@ -2,9 +2,7 @@
 #include "Camera.h"
 #include "yolo_vino.hpp"
 #include "PnP.h"
-
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
+#include "Visualizer.h"
 
 #include <iostream>
 #include <memory>
@@ -58,9 +56,14 @@ int main()
     // 3. 实时采集、推理和可视化
     // ========================================================
 
-    cv::namedWindow("Armor Detection", cv::WINDOW_NORMAL);
-    cv::resizeWindow("Armor Detection", 1200, 900);
+    Visualizer visualizer;
 
+    visualizer.initialize(
+        "Armor Detection",
+        1200,
+        900
+    );
+    
     cv::Mat frame;
 
     PnP::PnPSolver pnp_solver;
@@ -80,6 +83,13 @@ int main()
 
     pnp_solver.print_camera_parameters();
 
+    const std::vector<cv::Point3f> armor_points = {
+        {-65.0F, -65.0F, 0.0F},
+        {-65.0F,  65.0F, 0.0F},
+        { 65.0F,  65.0F, 0.0F},
+        { 65.0F, -65.0F, 0.0F}
+    };
+
     while (true)
     {
         // ----------------------------------------------------
@@ -92,7 +102,7 @@ int main()
                       << camera.last_error() << std::endl;
 
             // 获取失败时跳过本次循环，继续尝试下一帧。
-            if (cv::waitKey(1) == 27)
+            if (visualizer.wait_key(1) == 27)
             {
                 break;
             }
@@ -120,121 +130,54 @@ int main()
 
         for (const auto& det : results)
         {
+            std::vector<cv::Point2f> image_points;
 
-            // 绘制输出的关键点。
-            for (std::size_t i = 0; i < det.keypoints.size(); ++i)
+            image_points.reserve(det.keypoints.size());
+
+            for (const auto& keypoint : det.keypoints)
             {
-                const auto& keypoint = det.keypoints[i];
-
-                int x = static_cast<int>(keypoint.x);
-                int y = static_cast<int>(keypoint.y);
-
-                // 只绘制位于图像范围内的关键点。
-                if (x < 0 || x >= frame.cols
-                    || y < 0 || y >= frame.rows)
-                {
-                    continue;
-                }
-
-                cv::circle(
-                    frame,
-                    cv::Point(x, y),
-                    4,
-                    cv::Scalar(0, 0, 255),
-                    cv::FILLED
+                image_points.emplace_back(
+                    keypoint.x,
+                    keypoint.y
                 );
+            }
 
-                // 标记关键点序号，方便后续核对 PnP 点的顺序。
-                cv::putText(
+            visualizer.draw_keypoints(
+                frame,
+                image_points
+            );
+
+            if (image_points.size() != 4)
+            {
+                continue;
+            }
+
+            visualizer.draw_quadrilateral(
+                frame,
+                image_points
+            );
+
+            PnP::PnPResult pnp_result;
+
+            if (!pnp_solver.solve(image_points, pnp_result))
+            {
+                continue;
+            }
+
+            PnP::PnPSolver::print_result(pnp_result);
+
+            std::vector<cv::Point2f> projected_armor_points;
+
+            if (pnp_solver.project_points(
+                pnp_result,
+                armor_points,
+                projected_armor_points
+            ))
+            {
+                visualizer.draw_projected_rectangle(
                     frame,
-                    std::to_string(i),
-                    cv::Point(x + 5, y - 5),
-                    cv::FONT_HERSHEY_SIMPLEX,
-                    0.4,
-                    cv::Scalar(255, 0, 0),
-                    1
+                    projected_armor_points
                 );
-
-                if (det.keypoints.size() == 4)
-                {
-
-                    std::vector<cv::Point2f> image_points = {
-                        cv::Point2f(det.keypoints[0].x, det.keypoints[0].y),
-                        cv::Point2f(det.keypoints[1].x, det.keypoints[1].y),
-                        cv::Point2f(det.keypoints[2].x, det.keypoints[2].y),
-                        cv::Point2f(det.keypoints[3].x, det.keypoints[3].y)
-                        
-                        
-                    };
-
-                    PnP::PnPResult pnp_result;
-
-                    if (pnp_solver.solve(image_points, pnp_result))
-                    {
-                        PnP::PnPSolver::print_result(pnp_result);
-
-                        const std::vector<cv::Point3f> armor_points = {
-                            {-65.0F, -65.0F, 0.0F},
-                            {-65.0F,  65.0F, 0.0F},
-                            { 65.0F,  65.0F, 0.0F},
-                            { 65.0F, -65.0F, 0.0F}
-                        };
-
-                        std::vector<cv::Point2f>projected_armor_points;
-
-                        if (pnp_solver.project_points(
-                            pnp_result,
-                            armor_points,
-                            projected_armor_points
-                        ))
-                        {
-                            std::vector<cv::Point> armor_corners;
-                            
-                            for (const auto& point : projected_armor_points)
-                            {
-                                armor_corners.emplace_back(
-                                    cvRound(point.x),
-                                    cvRound(point.y)
-                                );
-                            }
-
-                            cv::polylines(
-                                frame,
-                                armor_corners,
-                                true,
-                                cv::Scalar(255, 255, 0),
-                                2
-                            );
-                        }
-
-                    }
-
-                    cv::Point p0(
-                        static_cast<int>(det.keypoints[0].x),
-                        static_cast<int>(det.keypoints[0].y)
-                    );
-
-                    cv::Point p1(
-                        static_cast<int>(det.keypoints[1].x),
-                        static_cast<int>(det.keypoints[1].y)
-                    );
-
-                    cv::Point p2(
-                        static_cast<int>(det.keypoints[2].x),
-                        static_cast<int>(det.keypoints[2].y)
-                    );
-
-                    cv::Point p3(
-                        static_cast<int>(det.keypoints[3].x),
-                        static_cast<int>(det.keypoints[3].y)
-                    );
-
-                    cv::line(frame, p0, p1, cv::Scalar(0, 255, 0), 2);
-                    cv::line(frame, p1, p2, cv::Scalar(0, 255, 0), 2);
-                    cv::line(frame, p2, p3, cv::Scalar(0, 255, 0), 2);
-                    cv::line(frame, p3, p0, cv::Scalar(0, 255, 0), 2);
-                    
-                }
             }
         }
 
@@ -242,18 +185,15 @@ int main()
         // 3.4 显示实时画面
         // ----------------------------------------------------
 
-        cv::imshow("Armor Detection", frame);
-
-        // 等待 1 ms，检测退出按键。
-        int key = cv::waitKey(1);
+        int key = visualizer.show(frame);
 
         if (key == 27 || key == 'q' || key == 'Q')
         {
             break;
         }
     }
-    
-    cv::destroyAllWindows();
+
+    visualizer.close();
 
     std::cout << "[System] Program exited."
               << std::endl;

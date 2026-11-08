@@ -10,6 +10,7 @@ find_package(OpenCV REQUIRED)
 add_subdirectory(src/YoloVino)
 add_subdirectory(src/Camera)
 add_subdirectory(src/PnP)
+add_subdirectory(src/Visualizer)
 
 add_executable(${PROJECT_NAME} app/main.cpp)
 target_link_libraries(${PROJECT_NAME}
@@ -17,10 +18,12 @@ target_link_libraries(${PROJECT_NAME}
   YoloVino_LIB
   Camera
   pnp_solver
+  Visualizer
   )
 target_include_directories(${PROJECT_NAME}
  PRIVATE
   ${OpenCV_INCLUDE_DIR}
   pnp_solver
+  Visualizer
   )
 target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS})
