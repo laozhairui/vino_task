@@ -73,14 +73,16 @@ int main()
     // 2. 初始化 YOLOv8 Pose
     // ========================================================
 
-    auto logger = std::make_unique<YoloVino::YoloVinoLogger>();
+    auto logger = std::make_unique<YoloVino::YoloVinoLogger>(
+        "../src/YoloVino/config/yolov5fourpoint_vino_config.yaml"
+    );
 
     // basic_info：显示基本运行信息和警告。
     // 避免实时推理时输出过多 debug 信息。
     logger->set_info_level(YoloVino::LoggerInfoLevel::basic_info);
     logger->print_yaml_info();
 
-    YoloVino::Yolov8poseVino vino(std::move(logger));
+    YoloVino::Yolov5fourpointVino vino(std::move(logger));
 
     std::cout << "[YOLO] Model initialized."
               << std::endl;
@@ -176,7 +178,7 @@ int main()
                 1
             );
 
-            // 绘制 YOLOv8 Pose 输出的关键点。
+            // 绘制输出的关键点。
             for (std::size_t i = 0; i < det.keypoints.size(); ++i)
             {
                 const auto& keypoint = det.keypoints[i];
