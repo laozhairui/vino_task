@@ -211,6 +211,35 @@ int main()
                     cv::Scalar(255, 0, 0),
                     1
                 );
+
+                if (det.keypoints.size() == 4)
+                {
+                    cv::Point p0(
+                        static_cast<int>(det.keypoints[0].x),
+                        static_cast<int>(det.keypoints[0].y)
+                    );
+
+                    cv::Point p1(
+                        static_cast<int>(det.keypoints[1].x),
+                        static_cast<int>(det.keypoints[1].y)
+                    );
+
+                    cv::Point p2(
+                        static_cast<int>(det.keypoints[2].x),
+                        static_cast<int>(det.keypoints[2].y)
+                    );
+
+                    cv::Point p3(
+                        static_cast<int>(det.keypoints[3].x),
+                        static_cast<int>(det.keypoints[3].y)
+                    );
+
+                    cv::line(frame, p0, p1, cv::Scalar(0, 255, 0), 2);
+                    cv::line(frame, p1, p2, cv::Scalar(0, 255, 0), 2);
+                    cv::line(frame, p2, p3, cv::Scalar(0, 255, 0), 2);
+                    cv::line(frame, p3, p0, cv::Scalar(0, 255, 0), 2);
+                    
+                }
             }
         }
 
