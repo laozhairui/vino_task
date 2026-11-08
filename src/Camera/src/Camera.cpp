@@ -1,4 +1,3 @@
-
 #include "Camera.h"
 
 #include <MvCameraControl.h>
@@ -12,16 +11,7 @@
 // ============================================================
 // 1. Impl：Camera 的内部实现类
 // ============================================================
-//
-// PIMPL（Pointer to IMPLementation，指向实现的指针）
-//
-// Camera.h 只声明：
-//     class Impl;
-//     std::unique_ptr<Impl> m_impl;
-//
-// 这里才真正定义 Impl，并把 MVS SDK 相关成员放进来。
-// 因此，使用 Camera.h 的其他模块不需要知道 MVS 的内部类型。
-//
+
 class Camera::Impl
 {
 public:
@@ -40,6 +30,73 @@ public:
         // 对象销毁时，尽可能释放相机和 SDK 资源。
         finalize();
     }
+
+    // ========================================================
+    // 1.1 一键启动相机
+    // ========================================================
+
+    bool start(int device_id)
+    {
+        m_last_error.clear();
+
+        // 已经开始采集时，不重复初始化。
+        if (m_grabbing)
+        {
+            return true;
+        }
+
+        // 不允许在存在未完成的设备状态时重复启动。
+        if (m_handle != nullptr || m_device_opened)
+        {
+            m_last_error =
+                "Camera is partially initialized. Release it first.";
+
+            return false;
+        }
+
+        // 初始化 SDK。
+        if (!initialize())
+        {
+            return false;
+        }
+
+        // 枚举设备。
+        if (!enumerate_devices())
+        {
+            return rollback_start();
+        }
+
+        // 检查设备索引。
+        if (device_id < 0 || device_id >= device_count())
+        {
+            m_last_error = "Invalid camera device ID.";
+            return rollback_start();
+        }
+
+        // 创建相机句柄。
+        if (!create_handle(device_id))
+        {
+            return rollback_start();
+        }
+
+        // 打开相机，并设置相机参数。
+        if (!open())
+        {
+            return rollback_start();
+        }
+
+        // 开始图像采集。
+        if (!start_grabbing())
+        {
+            return rollback_start();
+        }
+
+        return true;
+    }
+
+    // ========================================================
+    // 1.2 初始化和释放 SDK
+    // ========================================================
 
     bool initialize()
     {
@@ -75,8 +132,12 @@ public:
             return true;
         }
 
-        // 先停止采集、关闭设备并销毁句柄。
-        if (!close())
+        // 尝试释放设备资源。
+        bool close_success = close();
+
+        // 如果句柄仍然存在，说明设备资源没有完全释放。
+        // 此时不能结束 SDK。
+        if (m_handle != nullptr)
         {
             return false;
         }
@@ -102,8 +163,14 @@ public:
         --m_sdk_reference_count;
         m_sdk_acquired = false;
 
-        return true;
+        // 即使设备资源最终释放成功，
+        // 如果之前的停止采集操作失败，仍然向调用者报告失败。
+        return close_success;
     }
+
+    // ========================================================
+    // 1.3 设备枚举和句柄创建
+    // ========================================================
 
     bool enumerate_devices()
     {
@@ -185,6 +252,10 @@ public:
         return true;
     }
 
+    // ========================================================
+    // 1.4 打开相机和设置参数
+    // ========================================================
+
     bool open()
     {
         m_last_error.clear();
@@ -216,9 +287,10 @@ public:
 
         m_device_opened = true;
 
+        // 打开相机后设置参数。
         if (!set_camera_parameters())
         {
-            // 保存原始错误，避免 close() 操作覆盖错误信息。
+            // 保存原始错误，避免清理操作覆盖错误信息。
             std::string error_message = m_last_error;
 
             close();
@@ -282,13 +354,19 @@ public:
         return true;
     }
 
+    // ========================================================
+    // 1.5 图像采集
+    // ========================================================
+
     bool start_grabbing()
     {
         m_last_error.clear();
 
         if (!m_device_opened)
         {
-            m_last_error = "Open the camera before starting acquisition.";
+            m_last_error =
+                "Open the camera before starting acquisition.";
+
             return false;
         }
 
@@ -316,7 +394,9 @@ public:
 
         if (!m_grabbing)
         {
-            m_last_error = "Start image acquisition before getting frames.";
+            m_last_error =
+                "Start image acquisition before getting frames.";
+
             return false;
         }
 
@@ -393,8 +473,8 @@ public:
             return false;
         }
 
-        // raw_image 只是引用 MVS 提供的原始图像缓冲区，
-        // 不拥有这块内存，因此不能在释放 MVS 缓冲区后继续使用它。
+        // raw_image 只引用 MVS 提供的原始图像缓冲区，
+        // 不拥有这块内存，因此不能在释放 MVS 缓冲区后继续使用。
         cv::Mat raw_image(
             height,
             width,
@@ -402,7 +482,7 @@ public:
             frame_info.pBufAddr
         );
 
-        // 保留原代码的 Bayer 转 BGR 转换方式。
+        // Bayer 转 BGR。
         cv::cvtColor(
             raw_image,
             image,
@@ -412,12 +492,18 @@ public:
         return !image.empty();
     }
 
+    // ========================================================
+    // 1.6 停止采集和关闭设备
+    // ========================================================
+
     bool stop_grabbing()
     {
         if (!m_grabbing)
         {
             return true;
         }
+
+        m_last_error.clear();
 
         int ret = MV_CC_StopGrabbing(m_handle);
 
@@ -434,6 +520,8 @@ public:
 
     bool close()
     {
+        m_last_error.clear();
+
         if (m_handle == nullptr)
         {
             m_device_opened = false;
@@ -441,35 +529,51 @@ public:
             return true;
         }
 
-        // 先停止采集。
+        bool success = true;
+        std::string first_error;
+
+        // 第一步：尝试停止采集。
         if (m_grabbing)
         {
             if (!stop_grabbing())
             {
-                return false;
+                success = false;
+                first_error = m_last_error;
             }
         }
 
-        // 再关闭设备。
+        // 第二步：尝试关闭设备。
         if (m_device_opened)
         {
             int ret = MV_CC_CloseDevice(m_handle);
 
             if (ret != MV_OK)
             {
-                m_last_error = "Failed to close camera device.";
+                // 关闭设备失败时，不能销毁仍然关联设备的句柄。
+                if (success)
+                {
+                    first_error = "Failed to close camera device.";
+                }
+
+                m_last_error = first_error;
                 return false;
             }
 
             m_device_opened = false;
+            m_grabbing = false;
         }
 
-        // 最后销毁句柄。
+        // 第三步：销毁句柄。
         int ret = MV_CC_DestroyHandle(m_handle);
 
         if (ret != MV_OK)
         {
-            m_last_error = "Failed to destroy camera handle.";
+            if (success)
+            {
+                first_error = "Failed to destroy camera handle.";
+            }
+
+            m_last_error = first_error;
             return false;
         }
 
@@ -477,8 +581,18 @@ public:
         m_device_opened = false;
         m_grabbing = false;
 
+        if (!success)
+        {
+            m_last_error = first_error;
+            return false;
+        }
+
         return true;
     }
+
+    // ========================================================
+    // 1.7 状态和错误信息
+    // ========================================================
 
     bool is_opened() const
     {
@@ -491,7 +605,29 @@ public:
     }
 
 private:
-    // 以下成员全部属于实现类，不会暴露给 Camera.h 的使用者。
+    // ========================================================
+    // 1.8 启动失败后的回滚
+    // ========================================================
+
+    bool rollback_start()
+    {
+        // 保存真正导致启动失败的错误。
+        std::string original_error = m_last_error;
+
+        // 尝试释放设备和 SDK 资源。
+        finalize();
+
+        // 清理过程中可能产生其他错误，
+        // 这里恢复最初的启动失败原因。
+        m_last_error = original_error;
+
+        return false;
+    }
+
+    // ========================================================
+    // 1.9 内部成员
+    // ========================================================
+
     MV_CC_DEVICE_INFO_LIST m_device_list{};
     void* m_handle;
 
@@ -512,13 +648,6 @@ int Camera::Impl::m_sdk_reference_count = 0;
 // ============================================================
 // 2. Camera：对外公开的接口
 // ============================================================
-//
-// Camera 对外只保留接口。
-// 每个函数都把工作转交给 m_impl 内部的 Impl 对象。
-//
-// 其他模块只需要调用 Camera::initialize()、Camera::get_frame() 等，
-// 不需要接触 MVS SDK 的任何类型或函数。
-//
 
 Camera::Camera()
     : m_impl(std::make_unique<Impl>())
@@ -526,6 +655,11 @@ Camera::Camera()
 }
 
 Camera::~Camera() = default;
+
+bool Camera::start(int device_id)
+{
+    return m_impl->start(device_id);
+}
 
 bool Camera::initialize()
 {

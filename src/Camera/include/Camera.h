@@ -9,6 +9,9 @@
 class Camera
 {
 public:
+
+    bool start(int device_id = 0);
+
     Camera();
 
     ~Camera();
@@ -16,6 +19,9 @@ public:
     // 禁止拷贝，避免多个 Camera 对象错误共享同一个实现实例
     Camera(const Camera&) = delete;
     Camera& operator=(const Camera&) = delete;
+
+    Camera(Camera&&) = delete;
+    Camera& operator=(Camera&&) = delete;
 
     // 初始化和释放 MVS SDK
     bool initialize();

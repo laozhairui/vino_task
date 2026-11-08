@@ -22,49 +22,14 @@ int main()
 
     Camera camera;
 
-    // 初始化 MVS SDK。
-    if (!camera.initialize())
+    if (!camera.start())
     {
-        std::cerr << "[Camera Error] "
-                  << camera.last_error() << std::endl;
+        std::cerr << "[Camera Error]" << camera.last_error() << '\n';
+
         return -1;
     }
 
-    // 枚举当前连接的相机。
-    if (!camera.enumerate_devices())
-    {
-        std::cerr << "[Camera Error] "
-                  << camera.last_error() << std::endl;
-        return -1;
-    }
-
-    std::cout << "[Camera] Found "
-              << camera.device_count()
-              << " camera(s)." << std::endl;
-
-    // 创建第 0 个相机设备的句柄。
-    if (!camera.create_handle(0))
-    {
-        std::cerr << "[Camera Error] "
-                  << camera.last_error() << std::endl;
-        return -1;
-    }
-
-    // 打开相机，并设置曝光、增益等参数。
-    if (!camera.open())
-    {
-        std::cerr << "[Camera Error] "
-                  << camera.last_error() << std::endl;
-        return -1;
-    }
-
-    // 开始图像采集。
-    if (!camera.start_grabbing())
-    {
-        std::cerr << "[Camera Error] "
-                  << camera.last_error() << std::endl;
-        return -1;
-    }
+    std::cout << "[Camera] Found " << camera.device_count() << " camera(s)." << '\n';
 
     std::cout << "[Camera] Image acquisition started."
               << std::endl;
@@ -287,16 +252,7 @@ int main()
             break;
         }
     }
-
-
-    // ========================================================
-    // 4. 释放资源
-    // ========================================================
-
-    camera.stop_grabbing();
-    camera.close();
-    camera.finalize();
-
+    
     cv::destroyAllWindows();
 
     std::cout << "[System] Program exited."
