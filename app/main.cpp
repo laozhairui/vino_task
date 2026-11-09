@@ -74,21 +74,10 @@ int main()
     {
         std::cerr << "[PnP ERROR] Failied to load camera calivreation" << std::endl;
 
-        camera.stop_grabbing();
-        camera.close();
-        camera.finalize();
-
         return -1;
     }
 
     pnp_solver.print_camera_parameters();
-
-    const std::vector<cv::Point3f> armor_points = {
-        {-65.0F, -65.0F, 0.0F},
-        {-65.0F,  65.0F, 0.0F},
-        { 65.0F,  65.0F, 0.0F},
-        { 65.0F, -65.0F, 0.0F}
-    };
 
     while (true)
     {
@@ -170,7 +159,6 @@ int main()
 
             if (pnp_solver.project_points(
                 pnp_result,
-                armor_points,
                 projected_armor_points
             ))
             {

@@ -532,17 +532,34 @@ void PnPSolver::print_result(const PnPResult& result)
 
 bool PnPSolver::project_points(
     const PnPResult& result,
-    const std::vector<cv::Point3f>& object_points,
-    std::vector<cv::Point2f>& image_points
+    std::vector<cv::Point2f>& image_points,
+    double armor_length,
+    double armor_width
 ) const
 {
-    if (!is_ready() || object_points.empty())
+
+    const float armor_half_width = static_cast<float>(
+        armor_width / 2.0
+    );
+
+    const float armor_half_length = static_cast<float>(
+        armor_length / 2.0
+    );
+
+    const std::vector<cv::Point3f> armor_points = {
+        {-armor_half_length, -armor_half_width, 0.0F},
+        {-armor_half_length,  armor_half_width, 0.0F},
+        { armor_half_length,  armor_half_width, 0.0F},
+        { armor_half_length, -armor_half_width, 0.0F}
+    };
+
+    if (!is_ready() || armor_points.empty())
     {
         return false;
     }
 
     cv::projectPoints(
-        object_points,
+        armor_points,
         result.rotation_vector,
         result.translation_vector,
         m_camera_matrix,
@@ -550,7 +567,7 @@ bool PnPSolver::project_points(
         image_points
     );
 
-    return image_points.size() == object_points.size();
+    return image_points.size() == armor_points.size();
 }
 
 }  // namespace PnP

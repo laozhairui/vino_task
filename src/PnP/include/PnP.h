@@ -85,8 +85,9 @@ public:
 
     bool project_points(
         const PnPResult& result,
-        const std::vector<cv::Point3f>& object_points,
-        std::vector<cv::Point2f>& image_points
+        std::vector<cv::Point2f>& image_points,
+        double armor_length = 130.0,
+        double armor_width = 130.0
     ) const;
 
     // 检查相机参数是否已经成功加载。
