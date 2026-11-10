@@ -203,9 +203,9 @@ bool PnPSolver::validate_image_points(
 
 void PnPSolver::rotation_matrix_to_euler_zyx(
     const cv::Matx33d& rotation_matrix,
+    double& roll,  //原本为z,y,x  
     double& yaw,
-    double& pitch,
-    double& roll
+    double& pitch
 )
 {
     const double r31 = rotation_matrix(2, 0);
@@ -215,25 +215,25 @@ void PnPSolver::rotation_matrix_to_euler_zyx(
     const double r21 = rotation_matrix(1, 0);
     const double r11 = rotation_matrix(0, 0);
 
-    // pitch = asin(-r31)
-    pitch = std::asin(
+    // pitch = asin(-r31)  y
+    yaw = std::asin(
         std::clamp(-r31, -1.0, 1.0)
     );
 
-    const double cos_pitch = std::cos(pitch);
+    const double cos_yaw = std::cos(yaw);
 
     // 处理万向节锁定附近的情况。
-    if (std::abs(cos_pitch) > 1e-6)
+    if (std::abs(cos_yaw) > 1e-6)
     {
-        roll = std::atan2(r32, r33);
-        yaw = std::atan2(r21, r11);
+        pitch = std::atan2(r32, r33);//x
+        roll = std::atan2(r21, r11);//z
     }
     else
     {
         // 万向节锁定时，将 roll 固定为 0。
-        roll = 0.0;
+        pitch = 0.0; //x
 
-        yaw = std::atan2(
+        roll = std::atan2( //z
             -rotation_matrix(0, 1),
             rotation_matrix(1, 1)
         );
@@ -242,9 +242,9 @@ void PnPSolver::rotation_matrix_to_euler_zyx(
     // 弧度转换为角度。
     constexpr double RAD_TO_DEG = 180.0 / CV_PI;
 
+    roll *= RAD_TO_DEG;
     yaw *= RAD_TO_DEG;
     pitch *= RAD_TO_DEG;
-    roll *= RAD_TO_DEG;
 }
 
 
@@ -370,6 +370,7 @@ bool PnPSolver::solve(
     const cv::Matx33d rotation_camera_to_world =
         rotation_world_to_camera.t();
 
+    
     // --------------------------------------------------------
     // 6.4 计算 ZYX 欧拉角
     // --------------------------------------------------------
@@ -379,10 +380,10 @@ bool PnPSolver::solve(
     double roll = 0.0;
 
     rotation_matrix_to_euler_zyx(
-        rotation_camera_to_world,
+        rotation_world_to_camera,
+        roll,
         yaw,
-        pitch,
-        roll
+        pitch
     );
 
     // --------------------------------------------------------
@@ -525,6 +526,21 @@ void PnPSolver::print_result(const PnPResult& result)
     std::cout << "Reprojection Error: "
               << result.reprojection_error << " px"
               << std::endl;
+
+    std::cout << "================================\n"
+              << std::endl;
+
+    std::cout << "Armor -> Camera:\n"
+              << result.rotation_world_to_camera;
+
+    std::cout << "================================\n"
+              << std::endl;
+
+    std::cout << "================================\n"
+              << std::endl;
+
+    std::cout << "Camera -> world:\n"
+              << result.rotation_camera_to_world;
 
     std::cout << "================================\n"
               << std::endl;
