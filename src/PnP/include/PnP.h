@@ -27,7 +27,7 @@ struct PnPResult
     cv::Matx33d rotation_camera_to_world =
         cv::Matx33d::eye();
 
-    // ZYX 欧拉角，单位：度。
+    // ZYX 欧拉角，单位：度。应该为xyz
     double yaw = 0.0;
     double pitch = 0.0;
     double roll = 0.0;
@@ -111,9 +111,9 @@ private:
     // 将旋转矩阵转换为 ZYX 欧拉角。
     static void rotation_matrix_to_euler_zyx(
         const cv::Matx33d& rotation_matrix,
+        double& roll,
         double& yaw,
-        double& pitch,
-        double& roll
+        double& pitch
     );
 
 private:
